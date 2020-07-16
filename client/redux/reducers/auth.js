@@ -1,23 +1,28 @@
 import Cookies from 'universal-cookie'
 
-import { history } from '..'
+import { history, getSocket } from '..'
 
 const UPDATE_LOGIN = 'UPDATE_LOGIN'
 const UPDATE_PASSWORD = 'UPDATE_PASSWORD'
 const LOGIN = 'LOGIN'
-
+const SHOW_MESSAGE = 'SHOW_MESSAGE'
 const cookies = new Cookies()
 const initialState = {
   email: '',
   password: '',
   token: cookies.get('token'),
-  user: {}
+  user: {},
+  messages: []
 }
 
 export default (state = initialState, action) => {
   switch (action.type) {
     case UPDATE_LOGIN: {
       return { ...state, email: action.email }
+    }
+
+    case SHOW_MESSAGE: {
+      return { ...state, messages: [...state.messages, action.message] }
     }
 
     case LOGIN: {
@@ -40,25 +45,38 @@ export function updatePasswordField(password) {
   return { type: UPDATE_PASSWORD, password }
 }
 
-
 export function trySignIn() {
   return (dispatch) => {
-    fetch('/api/v1/auth')
-      .then((r) => r.json())
-      .then((data) => {
-        dispatch({ type: LOGIN, token: data.token, user: data.user })
-        history.push('/private')
-      })
+    try {
+      fetch('/api/v1/auth')
+        .then((r) => r.json())
+        .then((data) => {
+          setTimeout(() => {
+            getSocket().send(JSON.stringify({ type: 'SYSTEM_WELCOME', email: data.user.email }))
+          }, 1000)
+          dispatch({ type: LOGIN, token: data.token, user: data.user })
+          history.push('/chat')
+        })
+        .catch((err) => console.log(err))
+    } catch (err) {
+      console.log(err)
+    }
   }
 }
 
 export function tryGetUserInfo() {
   return () => {
-    fetch('/api/v1/user-info')
-      .then((r) => r.json())
-      .then((data) => {
-        console.log(data)
-      })
+    try {
+      fetch('/api/v1/user-info')
+        .then((r) => r.json())
+        .then((data) => {
+
+          console.log(data)
+        })
+        .catch((err) => err)
+    } catch (err) {
+      console.log(err)
+    }
   }
 }
 
@@ -78,7 +96,10 @@ export function signIn() {
       .then((r) => r.json())
       .then((data) => {
         dispatch({ type: LOGIN, token: data.token, user: data.user })
-        history.push('/private')
+        getSocket().send(
+          JSON.stringify({ type: 'SYSTEM_WELCOME', email: data.user.email })
+        )
+        history.push('/chat')
       })
   }
 }
