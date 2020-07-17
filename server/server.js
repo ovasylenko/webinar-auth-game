@@ -142,7 +142,7 @@ if (config.isSocketsEnabled) {
       const parsedData = JSON.parse(data)
       if (
         typeof parsedData.type !== 'undefined' &&
-        parsedData.type === 'SEND_MESSAGE_TO_THE_CHANNEL'
+        ['ADD_NEW_CHANNEL', 'SEND_MESSAGE_TO_THE_CHANNEL'].includes(parsedData.type)
       ) {
         if (parsedData.currentChannel.indexOf('#') === 0) {
           connections.forEach((c) => {
