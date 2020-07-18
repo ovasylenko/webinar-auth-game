@@ -5,19 +5,21 @@ const SET_CURRENT_CHANNEL = 'SET_CURRENT_CHANNEL'
 const UPDATE_ALIVE_USERS = 'UPDATE_ALIVE_USERS'
 const ADD_NEW_CHANNEL = 'ADD_NEW_CHANNEL'
 const ADD_NEW_CHANNEL_REQUEST = 'ADD_NEW_CHANNEL_REQUEST'
+const INITIALIZE_CHANNELS = 'INITIALIZE_CHANNELS'
+const TOGGLE_CHANNEL = 'TOGGLE_CHANNEL'
+const TOGGLE_CHANNEL_REQUESTED = 'TOGGLE_CHANNEL_REQUESTED'
 
 const initialState = {
-  currentChannel: '#reduxTears',
-  channels: [
-    'reduxTears',
-    'bucketForTears',
-    'iHateJavascript',
-    'neverPromiseAgain',
-    'makeStackoverflowGreatAgain'
-  ],
+  currentChannel: '',
+  channels: [],
   messages: {},
   users: []
 }
+
+export const ACTIONS =  {
+  TOGGLE_CHANNEL
+}
+
 
 export default (state = initialState, action) => {
   switch (action.type) {
@@ -27,6 +29,16 @@ export default (state = initialState, action) => {
         currentChannel: action.name
       }
     }
+    case INITIALIZE_CHANNELS: {
+      return {
+        ...state,
+        channels: action.channels,
+        messages: action.messages || {},
+
+        currentChannel: action.channels.length > 0 ? `#${action.channels[0]}` : ''
+      }
+    }
+
     case ADD_NEW_CHANNEL: {
       return {
         ...state,
@@ -78,14 +90,16 @@ export function sendMesage(message) {
     const { currentChannel } = store.chat
     const { email } = store.auth.user
 
-    getSocket().send(JSON.stringify({
-      type: SEND_MESSAGE_TO_THE_CHANNEL,
-      id: +new Date(),
-      message,
-      currentChannel,
-      email,
-      time: +new Date()
-    }))
+    getSocket().send(
+      JSON.stringify({
+        type: SEND_MESSAGE_TO_THE_CHANNEL,
+        id: +new Date(),
+        message,
+        currentChannel,
+        email,
+        time: +new Date()
+      })
+    )
   }
 }
 
@@ -108,6 +122,7 @@ export function setCurrentChannel(name) {
     name
   }
 }
+
 export function addNewChannel(name) {
   getSocket().send(
     JSON.stringify({
@@ -121,5 +136,14 @@ export function addNewChannel(name) {
   }
 }
 
-
-
+export function toggleChannel(channel) {
+  getSocket().send(
+    JSON.stringify({
+      type: TOGGLE_CHANNEL,
+      channel
+    })
+  )
+  return {
+    type: TOGGLE_CHANNEL_REQUESTED
+  }
+}

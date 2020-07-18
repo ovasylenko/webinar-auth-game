@@ -42,6 +42,22 @@ const PrivateRoute = ({ component: Component, ...rest }) => {
   return <Route {...rest} render={func} />
 }
 
+const AdminRoute = ({ component: Component, ...rest }) => {
+  const auth = useSelector((s) => s.auth)
+  const func = (props) =>
+    !!auth.user && !!auth.token && auth.roles.includes('admin') ? (
+      <Component {...props} />
+    ) : (
+      <Redirect
+        to={{
+          pathname: '/login'
+        }}
+      />
+    )
+  return <Route {...rest} render={func} />
+}
+
+
 const types = {
   component: PropTypes.func.isRequired,
   location: PropTypes.shape({
@@ -81,8 +97,9 @@ const RootComponent = (props) => {
             <Route exact path="/" component={() => <Home />} />
             <Route exact path="/game" component={() => <Game />} />
             <PrivateRoute exact path="/chat" component={() => <Chat />} />
-
             <Route exact path="/dashboard" component={() => <Home />} />
+
+            <AdminRoute exact path="/admin" component={() => <PrivateComponent />} />
             <PrivateRoute exact path="/private" component={() => <PrivateComponent />} />
             <Route component={() => <NotFound />} />
           </Switch>

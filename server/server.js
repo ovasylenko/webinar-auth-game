@@ -16,6 +16,8 @@ import auth from './middleware/auth'
 import config from './config'
 import Html from '../client/html'
 import User from './model/User.model'
+import Channel from './model/Channel.model'
+import Message from './model/Message.model'
 
 const Root = () => ''
 
@@ -54,7 +56,7 @@ passport.use('jwt', passportJWT.jwt)
 middleware.forEach((it) => server.use(it))
 
 server.get('/api/v1/user-info', auth(['admin']), (req, res) => {
-  res.json({ status: '123' })
+  res.json({ users: connections.map((t) => t.userInfo) })
 })
 
 server.get('/api/v1/test/cookies', (req, res) => {
@@ -135,19 +137,37 @@ const app = server.listen(port)
 
 if (config.isSocketsEnabled) {
   const echo = sockjs.createServer()
-  echo.on('connection', (conn) => {
+  echo.on('connection', async (conn) => {
     connections.push(conn)
     conn.on('data', async (data) => {
-      console.log('received', data)
       const parsedData = JSON.parse(data)
+
+      if (parsedData.type === 'TOGGLE_CHANNEL') {
+        const newUser = await User.toggleChannel({
+          email: conn.userInfo.email,
+          channel: parsedData.channel
+        })
+        connections
+          .filter((it) => typeof it.userInfo !== 'undefined')
+          .filter((it) => it.userInfo.email === conn.userInfo.email)
+          .forEach((cn) => {
+            cn.write(JSON.stringify({ type: 'TOGGLE_CHANNEL', channels: newUser.channels }))
+            cn.userInfo.channels = newUser.channels
+          })
+      }
+
       if (
         typeof parsedData.type !== 'undefined' &&
         ['ADD_NEW_CHANNEL', 'SEND_MESSAGE_TO_THE_CHANNEL'].includes(parsedData.type)
       ) {
         if (parsedData.currentChannel.indexOf('#') === 0) {
-          connections.forEach((c) => {
-            c.write(data)
-          })
+          connections
+            .filter((cn) => {
+              return cn?.userInfo?.channels?.includes(parsedData.currentChannel.slice(1))
+            })
+            .forEach((c) => {
+              c.write(data)
+            })
         }
 
         if (parsedData.currentChannel.indexOf('@') === 0) {
@@ -168,7 +188,7 @@ if (config.isSocketsEnabled) {
             .filter(
               (it) =>
                 typeof it.userInfo !== 'undefined' &&
-                (it.userInfo.email === parsedData.currentChannel.slice(1))
+                it.userInfo.email === parsedData.currentChannel.slice(1)
             )
             .forEach((c) => {
               c.write(
@@ -179,20 +199,62 @@ if (config.isSocketsEnabled) {
               )
             })
         }
+
+        if (parsedData.type === 'ADD_NEW_CHANNEL') {
+          const channel = new Channel()
+          channel.name = parsedData.name
+          await channel.save()
+        }
+
+        if (
+          parsedData.type === 'SEND_MESSAGE_TO_THE_CHANNEL' &&
+          parsedData.currentChannel.indexOf('#') === 0
+        ) {
+          const newObj = { ...parsedData, channel: parsedData.currentChannel.slice(1) }
+          delete newObj.currentChannel
+          const message = new Message(newObj)
+          await message.save()
+        }
       }
 
       if (parsedData.type === 'SYSTEM_WELCOME') {
+        let user = await User.findOne({ email: parsedData.email })
+
         conn.userInfo = {
-          email: parsedData.email
+          email: parsedData.email,
+          channels: user.channels
         }
         console.log(conn.userInfo)
+        console.log(user)
+
         const users = connections
           .filter((it) => typeof it.userInfo !== 'undefined')
           .map((it) => it.userInfo.email)
-        console.log(users)
+
+        let channels = (await Channel.find({})).map((it) => it.name)
+        const timespan = +new Date() - 1000 * 60 * 60 *48;
+
+        let messagesDB = await Message.find({ $gt: { time: timespan } }).limit(10000)
+        let messages = messagesDB
+          .map((it) => {
+            const obj = it.toObject()
+            delete obj._id
+            delete obj.__v
+            return obj
+          })
+          .reduce((acc, rec) => {
+            return {
+              ...acc,
+              [`#${rec.channel}`]:
+                typeof acc[`#${rec.channel}`] !== 'undefined'
+                  ? [...acc[`#${rec.channel}`], rec]
+                  : [rec]
+            }
+          }, {})
 
         connections.forEach((c) => {
           c.write(JSON.stringify({ type: 'UPDATE_ALIVE_USERS', users }))
+          c.write(JSON.stringify({ type: 'INITIALIZE_CHANNELS', channels, messages }))
         })
       }
     })

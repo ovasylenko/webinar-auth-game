@@ -1,28 +1,40 @@
 import React, {useState} from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 
-import { setCurrentChannel, addNewChannel } from '../../redux/reducers/chat'
+import { setCurrentChannel, addNewChannel, toggleChannel } from '../../redux/reducers/chat'
 
 const ChannelList = () => {
   const [newChannelName, setNewChannelName] = useState('')
   const dispatch = useDispatch()
   const channels = useSelector((s) => s.chat.channels)
+  const userChannels = useSelector((s) => s.auth.user.channels)
+
   const currentChannel = useSelector((s) => s.chat.currentChannel)
 
   return (
     <div>
       {channels.map((channelName) => {
         return (
-          <button
-            type="button"
-            key="channelName"
-            className="text-blue-900 flex"
-            onClick={() => {
-              dispatch(setCurrentChannel(`#${channelName}`))
-            }}
-          >
-            {currentChannel === `#${channelName}` ? <b>#{channelName}</b> : `#${channelName}`}
-          </button>
+          <div key={channelName} className="flex  items-center h-8">
+            <button
+              type="button"
+              className="hover:bg-blue-700 text-xs mr-4 text-white w-6 h-6 flex justify-center items-center bg-blue-600 rounded-full focus:outline-none focus:shadow-outline"
+              onClick={() => {
+                dispatch(toggleChannel(channelName))
+              }}
+            >
+              {userChannels.includes(channelName) ? '-' : '+'}
+            </button>
+            <button
+              type="button"
+              className="text-blue-900 flex"
+              onClick={() => {
+                dispatch(setCurrentChannel(`#${channelName}`))
+              }}
+            >
+              {currentChannel === `#${channelName}` ? <b>#{channelName}</b> : `#${channelName}`}
+            </button>{' '}
+          </div>
         )
       })}
       <div>

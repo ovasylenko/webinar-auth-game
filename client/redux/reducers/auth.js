@@ -1,12 +1,15 @@
 import Cookies from 'universal-cookie'
 
 import { history, getSocket } from '..'
+import { ACTIONS } from './chat'
 
+const { TOGGLE_CHANNEL } = ACTIONS
 const UPDATE_LOGIN = 'UPDATE_LOGIN'
 const UPDATE_PASSWORD = 'UPDATE_PASSWORD'
 const LOGIN = 'LOGIN'
 const SHOW_MESSAGE = 'SHOW_MESSAGE'
 const cookies = new Cookies()
+
 const initialState = {
   email: '',
   password: '',
@@ -16,9 +19,16 @@ const initialState = {
 }
 
 export default (state = initialState, action) => {
+  if (action.type === 'KICK_USER') {
+    cookies.remove('token')
+    window.location('/')
+  }
   switch (action.type) {
     case UPDATE_LOGIN: {
       return { ...state, email: action.email }
+    }
+    case TOGGLE_CHANNEL: {
+      return { ...state, user: { ...state.user, channels: action.channels } }
     }
 
     case SHOW_MESSAGE: {
@@ -70,7 +80,6 @@ export function tryGetUserInfo() {
       fetch('/api/v1/user-info')
         .then((r) => r.json())
         .then((data) => {
-
           console.log(data)
         })
         .catch((err) => err)
@@ -96,9 +105,7 @@ export function signIn() {
       .then((r) => r.json())
       .then((data) => {
         dispatch({ type: LOGIN, token: data.token, user: data.user })
-        getSocket().send(
-          JSON.stringify({ type: 'SYSTEM_WELCOME', email: data.user.email })
-        )
+        getSocket().send(JSON.stringify({ type: 'SYSTEM_WELCOME', email: data.user.email }))
         history.push('/chat')
       })
   }
