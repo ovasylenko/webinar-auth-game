@@ -6,6 +6,7 @@ import { ConnectedRouter } from 'connected-react-router'
 import { Switch, Route, Redirect, StaticRouter } from 'react-router-dom'
 
 import store, { history } from '../redux'
+import Beer from '../components/beer'
 
 import Home from '../components/home'
 import PrivateComponent from '../components/private-route'
@@ -96,6 +97,8 @@ const RootComponent = (props) => {
             <OnlyAnonymousRoute exact path="/login" component={() => <Home />} />
             <Route exact path="/" component={() => <Home />} />
             <Route exact path="/game" component={() => <Game />} />
+            <Route exact path="/beer" component={() => <Beer />} />
+
             <PrivateRoute exact path="/chat" component={() => <Chat />} />
             <Route exact path="/dashboard" component={() => <Home />} />
 

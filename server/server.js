@@ -8,6 +8,7 @@ import React from 'react'
 import cookieParser from 'cookie-parser'
 import passport from 'passport'
 import jwt from 'jsonwebtoken'
+import axios from 'axios'
 
 import mongooseService from './services/mongoose'
 import passportJWT from './services/passport.js'
@@ -55,6 +56,28 @@ passport.use('jwt', passportJWT.jwt)
 
 middleware.forEach((it) => server.use(it))
 
+const BASE_URL = 'https://sandbox-api.brewerydb.com/v2'
+const API_KEY = 'your api key'
+
+const getBeerUrl = () => `${BASE_URL}/beer/random?key=${API_KEY}`
+const getBreweryUrl = (id) => `${BASE_URL}/beer/${id}/breweries?key=${API_KEY}`
+const getBreweryData = (id) => `${BASE_URL}/brewery/${id}/locations?key=${API_KEY}`
+
+server.get('/api/v1/beer', (req, res) => {
+  axios(getBeerUrl()).then(({ data }) => {
+    res.json(data)
+  })
+})
+server.get('/api/v1/breweries/:id', (req, res) => {
+  axios(getBreweryUrl(req.params.id)).then(({ data }) => {
+    res.json(data)
+  })
+})
+server.get('/api/v1/breweries/locations/:id', (req, res) => {
+  axios(getBreweryData(req.params.id)).then(({ data }) => {
+    res.json(data)
+  })
+})
 server.get('/api/v1/user-info', auth(['admin']), (req, res) => {
   res.json({ users: connections.map((t) => t.userInfo) })
 })
